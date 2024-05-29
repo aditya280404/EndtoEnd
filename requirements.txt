@@ -1,1 +1,5 @@
+numpy
+pandas
+sklearn
+alpha_vantage
 #-e .
