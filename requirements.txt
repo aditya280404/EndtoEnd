@@ -3,5 +3,6 @@ pandas
 sklearn
 alpha_vantage
 dill
-
+tensorflow
+keras_tuner
 #-e .

@@ -93,18 +93,18 @@ class DataTransformation:
                 raise ValueError("Input data is empty. Please check the input data.")
             logging.info("No empty data")
 
-            print(input_feature_train_df.head(2))
-            print(input_feature_test_df.head(2))
+            # print(input_feature_train_df.head(2))
+            # print(input_feature_test_df.head(2))
 
             # Fit and transform train data
             input_feature_train_arr = preprocessing_obj.fit_transform(input_feature_train_df)
-            print("Transformed train data:")
-            print(input_feature_train_arr)
+            # print("Transformed train data:")
+            # print(input_feature_train_arr)
 
             # Transform test data
             input_feature_test_arr = preprocessing_obj.transform(input_feature_test_df)
-            print("Transformed test data:")
-            print(input_feature_test_arr)
+            # print("Transformed test data:")
+            # print(input_feature_test_arr)
 
             logging.info("Shapes of transformed input feature arrays:")
             logging.info(f"Train input features shape: {input_feature_train_arr.shape}")
@@ -131,15 +131,4 @@ class DataTransformation:
         except Exception as e:
             raise CustomException(e, sys)
 
-def main():
-    train_data_path = 'artifacts/train.csv'
-    test_data_path = 'artifacts/test.csv'
-    data_transformer = DataTransformation()
-    result = data_transformer.initiate_data_transformation(train_data_path, test_data_path)
 
-    # Further steps like model training can be added here
-    if result:
-        train_arr, test_arr, preprocessor_obj_file_path = result
-
-if __name__ == "__main__":
-    main()
