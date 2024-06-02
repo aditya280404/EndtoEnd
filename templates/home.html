@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction</title>
+</head>
+<body>
+    <h1>Stock Prediction</h1>
+    <form action="/predictdata" method="post">
+        <label for="date">Date:</label><br>
+        <input type="date" id="date" name="date"><br>
+        <label for="closing_price">Closing Price:</label><br>
+        <input type="number" id="closing_price" name="closing_price" step="any"><br>
+        <input type="submit" value="Predict">
+    </form>
+
+    {% if prediction_value is defined %}
+        <h2>Predicted Value:</h2>
+        <p>{{ prediction_value }}</p>
+    {% endif %}
+
+    {% if error_message %}
+        <h2>Error:</h2>
+        <p>{{ error_message }}</p>
+    {% endif %}
+</body>
+</html>

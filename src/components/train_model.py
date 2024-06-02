@@ -18,7 +18,7 @@ from src.utils import save_object, load_object
 
 @dataclass
 class ModelTrainerConfig:
-    trained_model_file_path: str = os.path.join("artifacts", "lstm_model.h5")
+    trained_model_file_path: str = os.path.join("artifacts", "lstm_model.pkl")
     tuner_dir: str = os.path.join("artifacts", "tuner")
 
 class LSTMHyperModel(HyperModel):

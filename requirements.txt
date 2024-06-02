@@ -5,4 +5,5 @@ alpha_vantage
 dill
 tensorflow
 keras_tuner
+flask
 #-e .
