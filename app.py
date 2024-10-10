@@ -1,17 +1,17 @@
 import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, render_template, redirect
 from io import StringIO
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler
-from src.exception import CustomException
-import sys
+import pickle
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 # Load the pre-trained LSTM model
 model = load_model('artifacts/lstm_model.h5')
+
+# Load the preprocessor object
+with open('artifacts/preprocessor.pkl', 'rb') as f:
+    preprocessor = pickle.load(f)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -27,92 +27,68 @@ def index():
 def predict():
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'No CSV file provided'}), 400
+            return redirect('/')
         
         file = request.files['file']
         if not file:
-            return jsonify({'error': 'No CSV file provided'}), 400
-
+            return redirect('/')
+        
         # Read CSV data
         csv_data = file.read().decode('utf-8')
         # Parse CSV data
         df = pd.read_csv(StringIO(csv_data))
 
-        # Preprocess data
-        df, close_price_scaler = preprocess_data(df)
+        # Ensure column names are appropriately handled
+        df.columns = df.columns.str.strip()
+
+        # Encode the date column
+        label_encoder = LabelEncoder()
+        df['date_encoded'] = label_encoder.fit_transform(df['date'])
+        
+        # Apply MinMax scaling to the '4. close' column
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        df['4. close_scaled'] = scaler.fit_transform(df[['4. close']])
+
+        # Preprocess only the 'date_encoded' column
+        date_encoded_preprocessed = preprocessor.transform(df[['date_encoded']])
+
+        # Convert the preprocessed data back to a DataFrame
+        df_preprocessed = pd.DataFrame(date_encoded_preprocessed, columns=['date_encoded'])
+
+        # Keep the '4. close_scaled' column and use it for predictions
+        df_preprocessed['4. close_scaled'] = df['4. close_scaled'].values
 
         # Extract close prices and dates from the preprocessed data
-        close_prices = df['4. close'].values.reshape(-1, 1)
-        dates = df['date_encoded'].values.reshape(-1, 1)
+        close_prices_scaled = df_preprocessed['4. close_scaled'].values.reshape(-1, 1)
+        dates = df_preprocessed['date_encoded'].values.reshape(-1, 1)
 
-        # Combine normalized features into sequences
-        sequence_length = 60  # Adjusted to match model's expected sequence length
+        # Initialize the sequence with the last 60 days of data
+        sequence_length = 60
         X = []
-        for i in range(len(close_prices) - sequence_length + 1):
-            seq_close = close_prices[i:i + sequence_length]
-            seq_dates = dates[i:i + sequence_length]
-            X.append(np.hstack((seq_close, seq_dates)))
-
-        # Convert X to numpy array
+        X.append(np.hstack((close_prices_scaled[-sequence_length:], dates[-sequence_length:])))
         X = np.array(X)
 
-        # Make predictions
-        predictions_scaled = model.predict(X)
+        # Now make predictions for the next 30 days
+        predictions_scaled = []
+        for i in range(30):
+            # Predict the next day
+            prediction = model.predict(X)[0]
+            predictions_scaled.append(prediction)
 
-        # Inverse transform the scaled predictions to original values
-        predictions = close_price_scaler.inverse_transform(predictions_scaled)
+            # Update the sequence: remove the first entry and append the new prediction
+            new_seq = np.vstack((X[0][1:], np.hstack((prediction, dates[-1]))))  # Appending the prediction and the most recent date
+            X = np.array([new_seq])
 
-        # Return the predictions as JSON
-        return jsonify({'predictions': predictions.tolist()}), 200
+        # Inverse transform the predictions to get them back to the original scale
+        predictions = scaler.inverse_transform(predictions_scaled)
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-def preprocess_data(df):
-    try:
-        # Ensure column names are appropriately handled
-        df.columns = df.columns.str.strip()  
-
-        # Combine train and test data for fitting the LabelEncoder
-        combined_dates = pd.concat([df['date']]).unique()
-
-        # Initialize and fit LabelEncoder on the combined date data
-        label_encoder = LabelEncoder()
-        label_encoder.fit(combined_dates)
-
-        # Encode the date column using the fitted LabelEncoder
-        df['date_encoded'] = label_encoder.transform(df['date'])
-
-        # Define the preprocessing pipeline
-        num_pipeline = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", StandardScaler())
-            ]
-        )
-
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ("num_pipeline", num_pipeline, ['date_encoded'])
-            ],
-            remainder='passthrough'  # Leave other columns untouched
-        )
-
-        # Apply the preprocessing pipeline to the dataframe
-        df_preprocessed = preprocessor.fit_transform(df[['date_encoded', '4. close']])
-
-        # Convert the preprocessed data back to a DataFrame for easier manipulation
-        df_preprocessed = pd.DataFrame(df_preprocessed, columns=['date_encoded', '4. close'])
-
-        # Fit a MinMaxScaler on the close prices for inverse transform later
-        close_price_scaler = MinMaxScaler()
-        df_preprocessed['4. close'] = close_price_scaler.fit_transform(df_preprocessed[['4. close']])
-
-        return df_preprocessed, close_price_scaler
+        # Pass 'enumerate' to the template
+        return render_template('predictions.html', predictions=predictions, enumerate=enumerate)
 
     except Exception as e:
-        raise CustomException(e, sys)
+        return str(e), 400
 
 if __name__ == '__main__':
     # Run the Flask app
-    app.run(debug=True, port=8084)
+    app.run(debug=True, host='0.0.0.0', port=5006)
+    

@@ -1,6 +1,6 @@
 numpy
 pandas
-sklearn
+scikit-learn
 alpha_vantage
 dill
 tensorflow

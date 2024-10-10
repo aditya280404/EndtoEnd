@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Results</title>
+</head>
+<body>
+    <h1>Predicted Values for the Next 30 Days</h1>
+
+    <table border="1">
+        <tr>
+            <th>Day</th>
+            <th>Predicted Close Price</th>
+        </tr>
+        {% for prediction in predictions %}
+        <tr>
+            <td>{{ loop.index }}</td>  <!-- Jinja2 loop.index provides a 1-based index -->
+            <td>{{ prediction[0] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="/">Go back</a>
+</body>
+</html>
