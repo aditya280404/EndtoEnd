@@ -28,6 +28,7 @@ cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 cloudpickle==2.2.1
+cmake==3.26.4
 coloredlogs==15.0.1
 comm==0.2.2
 contourpy==1.2.1
@@ -129,7 +130,6 @@ numba==0.60.0
 numexpr==2.10.0
 numpy==1.26.4
 oauthlib==3.2.2
-onnx==1.14.0
 onnxconverter-common==1.13.0
 onnxmltools==1.11.2
 onnxruntime==1.15.1
