@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Workflow</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-white shadow mb-6">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold">Automation Demo</h1>
+      <div>
+        <a href="index.html" class="mr-4 text-blue-600">Workflows</a>
+        <a href="create.html" class="text-blue-600">New Workflow</a>
+      </div>
+    </div>
+  </nav>
+  <main class="max-w-3xl mx-auto px-4">
+    <div id="loading">Loading...</div>
+    <div id="error" class="text-red-600"></div>
+    <div id="runner" style="display:none;">
+      <h2 class="text-2xl font-bold mb-2" id="wfName"></h2>
+      <h3 class="font-semibold">Steps</h3>
+      <ul id="stepsList" class="list-disc list-inside bg-white p-3 rounded mb-4"></ul>
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Input Data (JSON)</label>
+        <textarea id="inputData" rows="6" class="w-full border p-2 font-mono rounded">{
+  
+}</textarea>
+        <p class="text-sm text-gray-600 mt-1">Provide variables required by the workflow, e.g. {"filePath":"/tmp/report.pdf","recipient":"alice@example.com"}</p>
+      </div>
+      <button id="runBtn" class="bg-green-600 text-white px-4 py-2 rounded">Run</button>
+      <span id="status" class="ml-4 text-sm"></span>
+      <div id="result" class="mt-4"></div>
+    </div>
+  </main>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const runnerEl = document.getElementById('runner');
+    const wfNameEl = document.getElementById('wfName');
+    const stepsListEl = document.getElementById('stepsList');
+    const inputDataEl = document.getElementById('inputData');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const API_BASE = 'http://localhost:8080';
+    if (!id) {
+      loadingEl.style.display = 'none';
+      errorEl.textContent = 'Missing workflow id';
+    } else {
+      fetch(`${API_BASE}/api/workflows/${id}`).then(res => res.json()).then(data => {
+        loadingEl.style.display = 'none';
+        wfNameEl.textContent = data.name;
+        data.steps.forEach(step => {
+          const li = document.createElement('li');
+          li.innerHTML = `<strong>${step.nodeType}</strong> - <span class="text-sm">${JSON.stringify(step.params)}</span>`;
+          stepsListEl.appendChild(li);
+        });
+        runnerEl.style.display = 'block';
+      }).catch(() => {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Failed to load workflow';
+      });
+    }
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      statusEl.textContent = '';
+      resultEl.innerHTML = '';
+      let input;
+      try {
+        input = inputDataEl.value && inputDataEl.value.trim() ? JSON.parse(inputDataEl.value) : {};
+      } catch (e) {
+        statusEl.textContent = 'Input JSON is invalid';
+        statusEl.className = 'text-red-600';
+        return;
+      }
+      statusEl.textContent = 'Running...';
+      statusEl.className = 'text-gray-600';
+      try {
+        const res = await fetch(`${API_BASE}/api/workflows/${id}/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Execution failed');
+        }
+        statusEl.textContent = 'Success';
+        statusEl.className = 'text-green-600';
+        resultEl.innerHTML = `<pre class="bg-gray-200 p-3 rounded text-sm">${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.className = 'text-red-600';
+      }
+    });
+  </script>
+</body>
+</html>
